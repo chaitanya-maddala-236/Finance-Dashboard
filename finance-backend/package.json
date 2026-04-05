@@ -14,13 +14,13 @@
   },
   "dependencies": {
     "@fastify/rate-limit": "^10.3.0",
-    "@fastify/swagger": "^8.14.0",
-    "@fastify/swagger-ui": "^3.0.0",
+    "@fastify/swagger": "^9.7.0",
+    "@fastify/swagger-ui": "^5.2.5",
     "@prisma/client": "^5.14.0",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
-    "fastify": "^4.29.1",
-    "fastify-plugin": "^4.5.1",
+    "fastify": "^5.8.4",
+    "fastify-plugin": "^5.0.1",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
