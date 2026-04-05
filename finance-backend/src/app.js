@@ -35,6 +35,24 @@ export async function buildApp(opts = {}) {
   await fastify.register(swaggerPlugin);
   await fastify.register(prismaPlugin);
 
+  // Root route
+  fastify.get('/', async (request, reply) => {
+    return reply.send({
+      success: true,
+      message: 'Finance Dashboard API is running 🚀',
+      version: '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      documentation: `http://localhost:${process.env.PORT || 3000}/docs`,
+      endpoints: {
+        auth:      '/api/auth',
+        users:     '/api/users',
+        records:   '/api/records',
+        dashboard: '/api/dashboard'
+      },
+      timestamp: new Date().toISOString()
+    });
+  });
+
   // Health check
   fastify.get('/health', {
     schema: {
