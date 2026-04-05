@@ -1,15 +1,5 @@
 import * as authController from './auth.controller.js';
 
-const RATE_LIMIT_AUTH = {
-  max: 10,
-  timeWindow: '1 minute',
-  errorResponseBuilder: (_request, context) => ({
-    success: false,
-    message: `Too many requests. Please try again after ${context.after}.`,
-    errors: null,
-  }),
-};
-
 const registerSchema = {
   schema: {
     tags: ['Auth'],
@@ -91,13 +81,6 @@ const loginSchema = {
 };
 
 export default async function authRoutes(fastify) {
-  fastify.post('/register', {
-    ...registerSchema,
-    config: { rateLimit: RATE_LIMIT_AUTH },
-  }, authController.register);
-
-  fastify.post('/login', {
-    ...loginSchema,
-    config: { rateLimit: RATE_LIMIT_AUTH },
-  }, authController.login);
+  fastify.post('/register', registerSchema, authController.register);
+  fastify.post('/login', loginSchema, authController.login);
 }

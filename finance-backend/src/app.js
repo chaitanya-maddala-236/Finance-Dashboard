@@ -23,7 +23,14 @@ export async function buildApp(opts = {}) {
 
   // Register plugins (order matters: swagger before routes)
   await fastify.register(fastifyRateLimit, {
-    global: false, // only apply where config.rateLimit is set
+    global: true,
+    max: 100,
+    timeWindow: '1 minute',
+    errorResponseBuilder: (_request, context) => ({
+      success: false,
+      message: `Too many requests. Please try again after ${context.after}.`,
+      errors: null,
+    }),
   });
   await fastify.register(swaggerPlugin);
   await fastify.register(prismaPlugin);
