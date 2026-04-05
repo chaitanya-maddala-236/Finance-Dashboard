@@ -5,4 +5,9 @@ import { resolve, dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-dotenv.config({ path: resolve(__dirname, '../.env.test') });
+const envTestPath = resolve(__dirname, '../.env.test');
+const dotenvResult = dotenv.config({ path: envTestPath, override: true });
+
+if (dotenvResult.error) {
+  throw dotenvResult.error;
+}

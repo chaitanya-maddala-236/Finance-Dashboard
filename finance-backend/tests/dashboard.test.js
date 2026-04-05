@@ -35,10 +35,13 @@ beforeAll(async () => {
   ];
 
   for (const record of records) {
-    await supertest(app.server)
+    const res = await supertest(app.server)
       .post('/records')
       .set('Authorization', `Bearer ${adminToken}`)
       .send(record);
+
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
   }
 });
 

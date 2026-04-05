@@ -187,8 +187,10 @@ describe('Records Module', () => {
       expect(records.length).toBeGreaterThan(0);
       records.forEach((r) => {
         const date = new Date(r.date);
-        expect(date >= new Date('2025-02-01')).toBe(true);
-        expect(date <= new Date('2025-02-28T23:59:59')).toBe(true);
+        const startDate = new Date('2025-02-01T00:00:00.000Z');
+        const endDate = new Date('2025-02-28T23:59:59.999Z');
+        expect(date >= startDate).toBe(true);
+        expect(date <= endDate).toBe(true);
       });
     });
   });
@@ -207,7 +209,10 @@ describe('Records Module', () => {
           date: '2025-04-01',
           notes: 'Record to be deleted',
         });
+
+      expect(res.status).toBe(201);
       recordId = res.body.data.id;
+      expect(recordId).toBeDefined();
     });
 
     it('soft-deletes a record (sets isDeleted=true)', async () => {

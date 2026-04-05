@@ -23,7 +23,8 @@ export function createPrismaClient() {
  * This bypasses the register API so any role can be set.
  */
 export async function createUser(prisma, { name, email, password, role = 'VIEWER' }) {
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const rounds = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
+  const hashedPassword = await bcrypt.hash(password, rounds);
   return prisma.user.create({
     data: { name, email, password: hashedPassword, role },
   });
@@ -36,7 +37,15 @@ export async function loginUser(app, supertest, email, password) {
   const res = await supertest(app.server)
     .post('/auth/login')
     .send({ email, password });
-  return res.body.data?.token;
+
+  const token = res.body?.data?.token;
+  if (res.status !== 200 || res.body?.success === false || !token) {
+    throw new Error(
+      `Login failed for ${email}: status=${res.status}, body=${JSON.stringify(res.body)}`
+    );
+  }
+
+  return token;
 }
 
 /**
