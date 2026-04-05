@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import { UnauthorizedError } from '../utils/errors.js';
 
 /**
  * Fastify preHandler hook — verifies the JWT Bearer token.
@@ -9,18 +8,23 @@ export async function authenticate(request, reply) {
   const authHeader = request.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new UnauthorizedError('Missing or invalid Authorization header');
+    return reply.status(401).send({
+      success: false,
+      message: 'Missing or invalid Authorization header',
+    });
   }
 
   const token = authHeader.slice(7);
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    request.user = decoded;
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
   } catch (err) {
-    if (err.name === 'TokenExpiredError') {
-      throw new UnauthorizedError('Token has expired');
-    }
-    throw new UnauthorizedError('Invalid token');
+    return reply.status(401).send({
+      success: false,
+      message: err.name === 'TokenExpiredError' ? 'Token has expired' : 'Invalid token',
+    });
   }
+
+  request.user = decoded;
 }

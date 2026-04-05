@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { UnauthorizedError, ValidationError } from '../../utils/errors.js';
+import { UnauthorizedError, ConflictError } from '../../utils/errors.js';
 
 /**
  * Register a new user.
@@ -8,7 +8,7 @@ import { UnauthorizedError, ValidationError } from '../../utils/errors.js';
 export async function register(prisma, { name, email, password }) {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    throw new ValidationError('Email is already registered');
+    throw new ConflictError('Email is already registered');
   }
 
   const rounds = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
