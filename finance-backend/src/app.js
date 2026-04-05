@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import fastifyRateLimit from '@fastify/rate-limit';
 import { AppError } from './utils/errors.js';
 import { errorResponse } from './utils/response.js';
 
@@ -21,6 +22,9 @@ export async function buildApp(opts = {}) {
   });
 
   // Register plugins (order matters: swagger before routes)
+  await fastify.register(fastifyRateLimit, {
+    global: false, // only apply where config.rateLimit is set
+  });
   await fastify.register(swaggerPlugin);
   await fastify.register(prismaPlugin);
 
