@@ -1,7 +1,11 @@
+import { createRequire } from 'module';
 import Fastify from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import { AppError } from './utils/errors.js';
 import { errorResponse } from './utils/response.js';
+
+const require = createRequire(import.meta.url);
+const { version } = require('../package.json');
 
 // Plugins
 import prismaPlugin from './plugins/prisma.js';
@@ -40,14 +44,14 @@ export async function buildApp(opts = {}) {
     return reply.send({
       success: true,
       message: 'Finance Dashboard API is running 🚀',
-      version: '1.0.0',
+      version,
       environment: process.env.NODE_ENV || 'development',
-      documentation: `http://localhost:${process.env.PORT || 3000}/docs`,
+      documentation: '/docs',
       endpoints: {
-        auth:      '/api/auth',
-        users:     '/api/users',
-        records:   '/api/records',
-        dashboard: '/api/dashboard'
+        auth:      '/auth',
+        users:     '/users',
+        records:   '/records',
+        dashboard: '/dashboard'
       },
       timestamp: new Date().toISOString()
     });

@@ -8,8 +8,8 @@
 
 | Technology      | Purpose              | Version  |
 |-----------------|----------------------|----------|
-| Node.js         | Runtime              | >= 18    |
-| Fastify         | Web Framework        | v4       |
+| Node.js         | Runtime              | >= 20    |
+| Fastify         | Web Framework        | v5       |
 | Prisma          | ORM                  | v5       |
 | PostgreSQL       | Database             | >= 14    |
 | JWT             | Authentication       | -        |
@@ -22,7 +22,7 @@
 ## Getting Started
 
 ### Prerequisites
-- Node.js >= 18.0.0
+- Node.js >= 20.0.0
 - PostgreSQL >= 14
 - npm >= 9
 
@@ -58,8 +58,8 @@ Edit `.env` with your values:
 # Run migrations
 npx prisma migrate dev --name init
 
-# Seed with sample data (3 users + 50 records)
-npx prisma db seed
+# Seed with sample data (3 users + 5 records)
+npm run prisma:seed
 ```
 
 ### 5. Start the Server
@@ -79,7 +79,7 @@ Open `http://localhost:3000` — you should see:
   "success": true,
   "message": "Finance Dashboard API is running 🚀",
   "version": "1.0.0",
-  "documentation": "http://localhost:3000/docs"
+  "documentation": "/docs"
 }
 ```
 
@@ -87,11 +87,11 @@ Open `http://localhost:3000` — you should see:
 
 ## Test Credentials (after seeding)
 
-| Role    | Email                  | Password      |
-|---------|------------------------|---------------|
-| Admin   | admin@finance.com      | Admin@123     |
-| Analyst | analyst@finance.com    | Analyst@123   |
-| Viewer  | viewer@finance.com     | Viewer@123    |
+| Role    | Email                  | Password       |
+|---------|------------------------|----------------|
+| Admin   | admin@finance.com      | Admin@1234     |
+| Analyst | analyst@finance.com    | Analyst@1234   |
+| Viewer  | viewer@finance.com     | Viewer@1234    |
 
 ---
 
@@ -100,76 +100,70 @@ Open `http://localhost:3000` — you should see:
 | Action                 | Viewer | Analyst | Admin |
 |------------------------|--------|---------|-------|
 | View Dashboard Summary |   ✅   |   ✅   |  ✅   |
-| View Category Stats    |   ✅   |   ✅   |  ✅   |
-| View Trends            |   ✅   |   ✅   |  ✅   |
-| View Recent Activity   |   ✅   |   ✅   |  ✅   |
-| List Records           |   ❌   |   ✅   |  ✅   |
-| View Single Record     |   ❌   |   ✅   |  ✅   |
-| Create Record          |   ❌   |   ❌   |  ✅   |
-| Update Record          |   ❌   |   ❌   |  ✅   |
-| Delete Record          |   ❌   |   ❌   |  ✅   |
+| View Monthly Breakdown |   ✅   |   ✅   |  ✅   |
+| List Records           |   ✅   |   ✅   |  ✅   |
+| View Single Record     |   ✅   |   ✅   |  ✅   |
+| Create Record          |   ❌   |   ✅   |  ✅   |
+| Update Record          |   ❌   |   ✅   |  ✅   |
+| Delete Record          |   ❌   |   ✅   |  ✅   |
+| View Own Profile       |   ✅   |   ✅   |  ✅   |
 | List Users             |   ❌   |   ❌   |  ✅   |
-| Update User Role       |   ❌   |   ❌   |  ✅   |
-| Update User Status     |   ❌   |   ❌   |  ✅   |
+| Update User            |   ❌   |   ❌   |  ✅   |
+| Deactivate User        |   ❌   |   ❌   |  ✅   |
 
 ---
 
 ## API Endpoints
 
 ### Auth
-| Method | Endpoint             | Auth     | Description          |
-|--------|----------------------|----------|----------------------|
-| POST   | /api/auth/register   | None     | Register new user    |
-| POST   | /api/auth/login      | None     | Login, get JWT token |
-| GET    | /api/auth/me         | Required | Get current user     |
+| Method | Endpoint         | Auth     | Description          |
+|--------|------------------|----------|----------------------|
+| POST   | /auth/register   | None     | Register new user    |
+| POST   | /auth/login      | None     | Login, get JWT token |
+| GET    | /users/me        | Required | Get current user     |
 
 ### Users (Admin only)
-| Method | Endpoint                   | Description         |
-|--------|----------------------------|---------------------|
-| GET    | /api/users                 | List all users      |
-| GET    | /api/users/:id             | Get single user     |
-| PATCH  | /api/users/:id/role        | Update user role    |
-| PATCH  | /api/users/:id/status      | Activate/deactivate |
+| Method | Endpoint       | Description         |
+|--------|----------------|---------------------|
+| GET    | /users         | List all users      |
+| GET    | /users/:id     | Get single user     |
+| PATCH  | /users/:id     | Update user         |
+| DELETE | /users/:id     | Deactivate user     |
 
 ### Records
-| Method | Endpoint          | Role Required    | Description       |
-|--------|-------------------|------------------|-------------------|
-| GET    | /api/records      | Analyst or Admin | List with filters |
-| GET    | /api/records/:id  | Analyst or Admin | Get single record |
-| POST   | /api/records      | Admin only       | Create record     |
-| PUT    | /api/records/:id  | Admin only       | Update record     |
-| DELETE | /api/records/:id  | Admin only       | Soft delete       |
+| Method | Endpoint       | Role Required         | Description       |
+|--------|----------------|-----------------------|-------------------|
+| GET    | /records       | Any authenticated     | List with filters |
+| GET    | /records/:id   | Any authenticated     | Get single record |
+| POST   | /records       | Analyst or Admin      | Create record     |
+| PATCH  | /records/:id   | Analyst or Admin      | Update record     |
+| DELETE | /records/:id   | Analyst or Admin      | Soft delete       |
 
-### Dashboard (All roles)
-| Method | Endpoint                   | Description              |
-|--------|----------------------------|--------------------------|
-| GET    | /api/dashboard/summary     | Totals and net balance   |
-| GET    | /api/dashboard/categories  | Category-wise breakdown  |
-| GET    | /api/dashboard/trends      | Monthly or weekly trends |
-| GET    | /api/dashboard/recent      | Recent transactions      |
+### Dashboard (All authenticated roles)
+| Method | Endpoint              | Description              |
+|--------|-----------------------|--------------------------|
+| GET    | /dashboard/summary    | Totals and net balance   |
+| GET    | /dashboard/monthly    | Monthly income vs expense|
 
 ---
 
 ## Query Parameters
 
-### GET /api/records
-| Param      | Type   | Example        | Description               |
-|------------|--------|----------------|---------------------------|
-| type       | enum   | INCOME         | Filter by record type     |
-| category   | string | food           | Partial match on category |
-| startDate  | date   | 2026-01-01     | Filter from date          |
-| endDate    | date   | 2026-03-31     | Filter to date            |
-| search     | string | groceries      | Search in notes field     |
-| page       | number | 1              | Page number               |
-| limit      | number | 10             | Results per page (max 100)|
-| sortBy     | enum   | amount         | date, amount, createdAt   |
-| sortOrder  | enum   | asc            | asc or desc               |
+### GET /records
+| Param          | Type    | Example        | Description                  |
+|----------------|---------|----------------|------------------------------|
+| type           | enum    | INCOME         | Filter by record type        |
+| category       | string  | food           | Partial match on category    |
+| startDate      | date    | 2026-01-01     | Filter from date             |
+| endDate        | date    | 2026-03-31     | Filter to date               |
+| page           | number  | 1              | Page number                  |
+| limit          | number  | 10             | Results per page (max 100)   |
+| includeDeleted | boolean | false          | Include soft-deleted records |
 
-### GET /api/dashboard/trends
+### GET /dashboard/monthly
 | Param  | Type   | Default  | Description                  |
 |--------|--------|----------|------------------------------|
-| period | enum   | monthly  | monthly or weekly            |
-| year   | number | current  | Year to fetch trends for     |
+| year   | number | current  | Year to fetch breakdown for  |
 
 ---
 
@@ -177,29 +171,28 @@ Open `http://localhost:3000` — you should see:
 
 ### Register
 ```bash
-curl -X POST http://localhost:3000/api/auth/register \
+curl -X POST http://localhost:3000/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "John Doe",
     "email": "john@example.com",
-    "password": "Password@123",
-    "role": "ANALYST"
+    "password": "Password@123"
   }'
 ```
 
 ### Login
 ```bash
-curl -X POST http://localhost:3000/api/auth/login \
+curl -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@finance.com",
-    "password": "Admin@123"
+    "password": "Admin@1234"
   }'
 ```
 
-### Create Record (Admin)
+### Create Record (Analyst or Admin)
 ```bash
-curl -X POST http://localhost:3000/api/records \
+curl -X POST http://localhost:3000/records \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
@@ -213,7 +206,7 @@ curl -X POST http://localhost:3000/api/records \
 
 ### Dashboard Summary
 ```bash
-curl http://localhost:3000/api/dashboard/summary \
+curl http://localhost:3000/dashboard/summary \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -241,7 +234,7 @@ src/
 
 prisma/
 ├── schema.prisma              # Data models
-└── seed.js                    # 50 realistic seed records
+└── seed.js                    # Sample seed records
 ```
 
 Request flow:
@@ -299,8 +292,9 @@ The token carries userId and role, verified on every protected request.
   real-world data modeling.
 - A separate refresh token system was skipped to keep auth
   simple and focused on the core requirements.
-- Rate limiting was not implemented to keep scope appropriate
-  for the assignment.
+- Basic rate limiting is enabled globally via `@fastify/rate-limit`,
+  while more advanced per-route tuning was kept minimal to keep
+  the assignment scope focused.
 
 ---
 
@@ -310,7 +304,7 @@ The token carries userId and role, verified on every protected request.
 2. Financial record amounts are always positive; type (INCOME/EXPENSE)
    determines direction.
 3. Soft-deleted records are excluded from all dashboard calculations.
-4. The trends endpoint uses calendar year as the default grouping period.
+4. The monthly breakdown endpoint uses calendar year as the default grouping period.
 5. Admin users cannot deactivate their own account to prevent lockout.
 
 ---
