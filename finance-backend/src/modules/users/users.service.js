@@ -79,6 +79,14 @@ export async function updateUser(prisma, id, updates, requestingUser) {
     throw new ForbiddenError('Only admins can change user status');
   }
 
+  if (updates.status !== undefined) {
+    if (id === (requestingUser.sub || requestingUser.id)) {
+      const error = new Error('Cannot change your own status');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
   // Build update payload
   const data = {};
   if (updates.name !== undefined) data.name = updates.name;
@@ -98,6 +106,13 @@ export async function updateUser(prisma, id, updates, requestingUser) {
     select: USER_SELECT,
   });
 
+  if (updates.status === 'INACTIVE') {
+    await prisma.refreshToken.updateMany({
+      where: { userId: id, isRevoked: false },
+      data: { isRevoked: true },
+    });
+  }
+
   return updated;
 }
 
@@ -107,28 +122,7 @@ export async function updateUser(prisma, id, updates, requestingUser) {
  * Revoking all active refresh tokens immediately invalidates their sessions.
  */
 export async function deactivateUser(prisma, id, requestingUserId) {
-  const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) {
-    throw new NotFoundError(`User with id '${id}' not found`);
-  }
-
-  if (id === requestingUserId) {
-    throw new ForbiddenError('You cannot deactivate your own account');
-  }
-
-  const updated = await prisma.user.update({
-    where: { id },
-    data: { status: 'INACTIVE' },
-    select: USER_SELECT,
-  });
-
-  // Revoke all active refresh tokens to immediately invalidate sessions
-  await prisma.refreshToken.updateMany({
-    where: { userId: id, isRevoked: false },
-    data: { isRevoked: true },
-  });
-
-  return updated;
+  return updateUserStatus(prisma, id, 'INACTIVE', { id: requestingUserId });
 }
 
 /**
@@ -136,4 +130,40 @@ export async function deactivateUser(prisma, id, requestingUserId) {
  */
 export async function getMe(prisma, id) {
   return getUserById(prisma, id);
+}
+
+export async function updateUserStatus(prisma, id, status, requestingUser) {
+  if (id === requestingUser.id) {
+    const error = new Error('Cannot change your own status');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const updated = await prisma.user.update({
+    where: { id },
+    data: { status },
+    select: {
+      id: true, name: true, email: true,
+      role: true, status: true, updatedAt: true,
+      createdAt: true,
+    },
+  });
+
+  // If deactivating: soft-delete their active JWT sessions
+  // by revoking all refresh tokens
+  if (status === 'INACTIVE') {
+    await prisma.refreshToken.updateMany({
+      where: { userId: id, isRevoked: false },
+      data: { isRevoked: true },
+    });
+  }
+
+  return updated;
 }

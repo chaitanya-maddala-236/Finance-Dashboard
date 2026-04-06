@@ -71,7 +71,7 @@ describe('Records Module', () => {
       expect(res.body.data.isDeleted).toBe(false);
     });
 
-    it('ANALYST can create a record (201)', async () => {
+    it('ANALYST cannot create a record (403)', async () => {
       const res = await supertest(app.server)
         .post('/records')
         .set('Authorization', `Bearer ${analystToken}`)
@@ -82,9 +82,8 @@ describe('Records Module', () => {
           date: '2025-01-20',
         });
 
-      expect(res.status).toBe(201);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.type).toBe('EXPENSE');
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
     });
 
     it('VIEWER cannot create a record (403)', async () => {
@@ -130,7 +129,18 @@ describe('Records Module', () => {
         .send({ amount: 80.0, type: 'EXPENSE', category: 'Food', date: '2025-03-05' });
     });
 
-    it('ANALYST can view records (200)', async () => {
+    it('ANALYST can view only own records (200)', async () => {
+      const analystUser = await prisma.user.findUnique({ where: { email: 'records_analyst@test.com' } });
+      const ownCreate = await prisma.record.create({
+        data: {
+          amount: 77,
+          type: 'EXPENSE',
+          category: 'Own',
+          date: new Date('2025-02-11'),
+          createdById: analystUser.id,
+        },
+      });
+
       const res = await supertest(app.server)
         .get('/records')
         .set('Authorization', `Bearer ${analystToken}`);
@@ -140,6 +150,10 @@ describe('Records Module', () => {
       expect(Array.isArray(res.body.data.records)).toBe(true);
       expect(res.body.data.pagination).toBeDefined();
       expect(res.body.data.pagination.total).toBeGreaterThan(0);
+      expect(res.body.data.records.map((r) => r.id)).toContain(ownCreate.id);
+      res.body.data.records.forEach((r) => {
+        expect(r.createdById).toBe(analystUser.id);
+      });
     });
 
     it('filters records by type=INCOME', async () => {

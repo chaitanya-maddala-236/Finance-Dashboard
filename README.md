@@ -627,6 +627,23 @@ cd finance-backend
 docker-compose up --build -d
 ```
 
+### Deploy on Render
+
+This repository includes a root `render.yaml` Blueprint for one-click provisioning.
+
+1. Push your latest code to GitHub.
+2. In Render, choose **New +** → **Blueprint** and select this repository.
+3. Render will create:
+   - `finance-postgres` (PostgreSQL database)
+   - `finance-backend` (Node web service from `finance-backend/`)
+4. Set `JWT_SECRET` in Render Environment Variables (required secret).
+5. Deploy.
+
+Render deployment uses:
+- Build: `npm ci && npx prisma generate`
+- Start: `npx prisma migrate deploy && node src/server.js`
+- Health check: `/health`
+
 ---
 
 ## What Was Improved (v2)
@@ -657,4 +674,3 @@ All endpoints are documented with:
 - Response schemas per status code
 - Authentication requirements
 - Tag groupings (Auth, Users, Records, Dashboard)
-

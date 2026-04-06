@@ -36,13 +36,13 @@ const successWithRecord = {
 };
 
 export default async function recordsRoutes(fastify) {
-  // GET /records — list records (all authenticated users)
+  // GET /records — list records (ANALYST or ADMIN)
   fastify.get(
     '/',
     {
       schema: {
         tags: ['Records'],
-        summary: 'List financial records',
+        summary: 'List financial records (Analyst/Admin only)',
         security: [{ bearerAuth: [] }],
         querystring: {
           type: 'object',
@@ -51,8 +51,11 @@ export default async function recordsRoutes(fastify) {
             limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
             type: { type: 'string', enum: ['INCOME', 'EXPENSE'] },
             category: { type: 'string' },
+            search: { type: 'string' },
             startDate: { type: 'string', format: 'date' },
             endDate: { type: 'string', format: 'date' },
+            sortBy: { type: 'string', enum: ['date', 'amount', 'category', 'type', 'createdAt', 'updatedAt'], default: 'date' },
+            sortOrder: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
             includeDeleted: { type: 'string', enum: ['true', 'false'], default: 'false' },
           },
         },
@@ -81,18 +84,18 @@ export default async function recordsRoutes(fastify) {
           },
         },
       },
-      preHandler: [authenticate],
+      preHandler: [authenticate, authorizeMinRole('ANALYST')],
     },
     recordsController.listRecords
   );
 
-  // GET /records/:id — get record by id
+  // GET /records/:id — get record by id (ANALYST or ADMIN)
   fastify.get(
     '/:id',
     {
       schema: {
         tags: ['Records'],
-        summary: 'Get a record by ID',
+        summary: 'Get a record by ID (Analyst/Admin only)',
         security: [{ bearerAuth: [] }],
         params: {
           type: 'object',
@@ -101,18 +104,18 @@ export default async function recordsRoutes(fastify) {
         },
         response: { 200: successWithRecord },
       },
-      preHandler: [authenticate],
+      preHandler: [authenticate, authorizeMinRole('ANALYST')],
     },
     recordsController.getRecordById
   );
 
-  // POST /records — create record (ANALYST or ADMIN)
+  // POST /records — create record (ADMIN only)
   fastify.post(
     '/',
     {
       schema: {
         tags: ['Records'],
-        summary: 'Create a financial record (Analyst/Admin only)',
+        summary: 'Create a financial record (Admin only)',
         security: [{ bearerAuth: [] }],
         body: {
           type: 'object',
@@ -128,18 +131,18 @@ export default async function recordsRoutes(fastify) {
         },
         response: { 201: successWithRecord },
       },
-      preHandler: [authenticate, authorizeMinRole('ANALYST')],
+      preHandler: [authenticate, authorizeMinRole('ADMIN')],
     },
     recordsController.createRecord
   );
 
-  // PATCH /records/:id — update record (ANALYST or ADMIN)
+  // PATCH /records/:id — update record (ADMIN only)
   fastify.patch(
     '/:id',
     {
       schema: {
         tags: ['Records'],
-        summary: 'Update a financial record (Analyst/Admin only)',
+        summary: 'Update a financial record (Admin only)',
         security: [{ bearerAuth: [] }],
         params: {
           type: 'object',
@@ -159,18 +162,18 @@ export default async function recordsRoutes(fastify) {
         },
         response: { 200: successWithRecord },
       },
-      preHandler: [authenticate, authorizeMinRole('ANALYST')],
+      preHandler: [authenticate, authorizeMinRole('ADMIN')],
     },
     recordsController.updateRecord
   );
 
-  // DELETE /records/:id — soft delete (ANALYST or ADMIN)
+  // DELETE /records/:id — soft delete (ADMIN only)
   fastify.delete(
     '/:id',
     {
       schema: {
         tags: ['Records'],
-        summary: 'Soft-delete a financial record (Analyst/Admin only)',
+        summary: 'Soft-delete a financial record (Admin only)',
         security: [{ bearerAuth: [] }],
         params: {
           type: 'object',
@@ -179,7 +182,7 @@ export default async function recordsRoutes(fastify) {
         },
         response: { 200: successWithRecord },
       },
-      preHandler: [authenticate, authorizeMinRole('ANALYST')],
+      preHandler: [authenticate, authorizeMinRole('ADMIN')],
     },
     recordsController.deleteRecord
   );

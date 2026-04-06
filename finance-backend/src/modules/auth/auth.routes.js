@@ -1,4 +1,4 @@
-import { register, login, me } from './auth.controller.js';
+import { register, login, me, refresh, logout } from './auth.controller.js';
 import { authenticate } from '../../middleware/authenticate.js';
 
 const userSchema = {
@@ -66,8 +66,9 @@ export default async function authRoutes(fastify, _options) {
             data: {
               type: 'object',
               properties: {
-                token: { type: 'string' },
-                user:  userSchema,
+                accessToken: { type: 'string' },
+                refreshToken: { type: 'string' },
+                user: userSchema,
               },
             },
           },
@@ -89,5 +90,68 @@ export default async function authRoutes(fastify, _options) {
     },
     preHandler: [authenticate]
   }, me);
-}
 
+  // POST /auth/refresh
+  fastify.post('/refresh', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'Refresh access token',
+      body: {
+        type: 'object',
+        required: ['refreshToken'],
+        properties: {
+          refreshToken: { type: 'string', minLength: 1 },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            data: {
+              type: 'object',
+              properties: {
+                accessToken: { type: 'string' },
+                refreshToken: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, refresh);
+
+  // POST /auth/logout
+  fastify.post('/logout', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'Logout and revoke refresh token',
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        required: ['refreshToken'],
+        properties: {
+          refreshToken: { type: 'string', minLength: 1 },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            data: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                message: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+    preHandler: [authenticate],
+  }, logout);
+}

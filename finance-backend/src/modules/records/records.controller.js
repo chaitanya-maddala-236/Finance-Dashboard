@@ -2,7 +2,7 @@ import * as recordsService from './records.service.js';
 import { successResponse } from '../../utils/response.js';
 
 export async function listRecords(request, reply) {
-  const { page = 1, limit = 10, type, category, startDate, endDate, includeDeleted } = request.query;
+  const { page = 1, limit = 10, type, category, search, startDate, endDate, sortBy, sortOrder, includeDeleted } = request.query;
   const result = await recordsService.listRecords(
     request.server.prisma,
     {
@@ -10,8 +10,11 @@ export async function listRecords(request, reply) {
       limit: parseInt(limit, 10),
       type,
       category,
+      search,
       startDate,
       endDate,
+      sortBy,
+      sortOrder,
       includeDeleted: includeDeleted === 'true',
     },
     request.user
