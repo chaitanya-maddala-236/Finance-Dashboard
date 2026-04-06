@@ -79,6 +79,14 @@ export async function updateUser(prisma, id, updates, requestingUser) {
     throw new ForbiddenError('Only admins can change user status');
   }
 
+  if (updates.status !== undefined) {
+    if (id === (requestingUser.sub || requestingUser.id)) {
+      const error = new Error('Cannot change your own status');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
   // Build update payload
   const data = {};
   if (updates.name !== undefined) data.name = updates.name;
@@ -92,35 +100,20 @@ export async function updateUser(prisma, id, updates, requestingUser) {
     data.password = await bcrypt.hash(updates.password, rounds);
   }
 
-  if (updates.status !== undefined) {
-    const updatedStatusUser = await updateUserStatus(
-      prisma,
-      id,
-      updates.status,
-      { id: requestingUser.sub || requestingUser.id }
-    );
-
-    if (updates.name !== undefined || updates.role !== undefined || updates.password !== undefined) {
-      const followUpData = {};
-      if (updates.name !== undefined) followUpData.name = updates.name;
-      if (updates.role !== undefined) followUpData.role = updates.role;
-      if (updates.password) followUpData.password = data.password;
-
-      return prisma.user.update({
-        where: { id },
-        data: followUpData,
-        select: USER_SELECT,
-      });
-    }
-
-    return updatedStatusUser;
-  }
-
-  return prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id },
     data,
     select: USER_SELECT,
   });
+
+  if (updates.status === 'INACTIVE') {
+    await prisma.refreshToken.updateMany({
+      where: { userId: id, isRevoked: false },
+      data: { isRevoked: true },
+    });
+  }
+
+  return updated;
 }
 
 /**

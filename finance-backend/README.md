@@ -1,6 +1,6 @@
 # Finance Dashboard Backend API
 
-<img src="https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml/badge.svg">
+<img src="https://github.com/chaitanya-maddala-236/Finance-Dashboard/actions/workflows/ci.yml/badge.svg">
 
 A production-quality Finance Dashboard Backend API built with Node.js, Fastify, Prisma, and PostgreSQL.
 

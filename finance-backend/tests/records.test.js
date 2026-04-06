@@ -130,15 +130,14 @@ describe('Records Module', () => {
     });
 
     it('ANALYST can view only own records (200)', async () => {
+      const analystUser = await prisma.user.findUnique({ where: { email: 'records_analyst@test.com' } });
       const ownCreate = await prisma.record.create({
         data: {
           amount: 77,
           type: 'EXPENSE',
           category: 'Own',
           date: new Date('2025-02-11'),
-          createdById: (
-            await prisma.user.findUnique({ where: { email: 'records_analyst@test.com' } })
-          ).id,
+          createdById: analystUser.id,
         },
       });
 
@@ -151,8 +150,9 @@ describe('Records Module', () => {
       expect(Array.isArray(res.body.data.records)).toBe(true);
       expect(res.body.data.pagination).toBeDefined();
       expect(res.body.data.pagination.total).toBeGreaterThan(0);
+      expect(res.body.data.records.map((r) => r.id)).toContain(ownCreate.id);
       res.body.data.records.forEach((r) => {
-        expect(r.id).toBe(ownCreate.id);
+        expect(r.createdById).toBe(analystUser.id);
       });
     });
 
