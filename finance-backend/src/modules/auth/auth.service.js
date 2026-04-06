@@ -1,21 +1,27 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { UnauthorizedError, ConflictError } from '../../utils/errors.js';
 
 /**
  * Register a new user.
  */
-export async function register(prisma, { name, email, password }) {
+export async function registerUser(prisma, { name, email, password, role }) {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    throw new ConflictError('Email is already registered');
+    const error = new Error('Email already in use');
+    error.statusCode = 409;
+    throw error;
   }
 
   const rounds = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
   const hashedPassword = await bcrypt.hash(password, rounds);
 
   const user = await prisma.user.create({
-    data: { name, email, password: hashedPassword },
+    data: {
+      name,
+      email,
+      password: hashedPassword,
+      role: role || 'VIEWER',
+    },
     select: {
       id: true,
       name: true,
@@ -32,40 +38,35 @@ export async function register(prisma, { name, email, password }) {
 /**
  * Login a user and return a JWT token.
  */
-export async function login(prisma, { email, password }) {
+export async function loginUser(prisma, { email, password }) {
   const user = await prisma.user.findUnique({ where: { email } });
+
   if (!user) {
-    throw new UnauthorizedError('Invalid email or password');
+    const error = new Error('Invalid email or password');
+    error.statusCode = 401;
+    throw error;
   }
 
   if (user.status === 'INACTIVE') {
-    throw new UnauthorizedError('Account is inactive');
+    const error = new Error('Account is deactivated');
+    error.statusCode = 401;
+    throw error;
   }
 
   const isValid = await bcrypt.compare(password, user.password);
   if (!isValid) {
-    throw new UnauthorizedError('Invalid email or password');
+    const error = new Error('Invalid email or password');
+    error.statusCode = 401;
+    throw error;
   }
 
-  const payload = {
-    sub: user.id,
-    email: user.email,
-    role: user.role,
-    name: user.name,
-  };
+  const token = jwt.sign(
+    { userId: user.id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+  );
 
-  const token = jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  });
+  const { password: _, ...userWithoutPassword } = user;
 
-  return {
-    token,
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-    },
-  };
+  return { token, user: userWithoutPassword };
 }

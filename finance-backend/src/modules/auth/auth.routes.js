@@ -8,11 +8,11 @@ const registerSchema = {
       type: 'object',
       required: ['name', 'email', 'password'],
       properties: {
-        name: { type: 'string', minLength: 2, maxLength: 100 },
+        name: { type: 'string', minLength: 1 },
         email: { type: 'string', format: 'email' },
-        password: { type: 'string', minLength: 8, maxLength: 100 },
+        password: { type: 'string', minLength: 8 },
+        role: { type: 'string', enum: ['VIEWER', 'ANALYST', 'ADMIN'] },
       },
-      additionalProperties: false,
     },
     response: {
       201: {
@@ -49,7 +49,6 @@ const loginSchema = {
         email: { type: 'string', format: 'email' },
         password: { type: 'string', minLength: 1 },
       },
-      additionalProperties: false,
     },
     response: {
       200: {

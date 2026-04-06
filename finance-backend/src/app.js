@@ -1,8 +1,6 @@
 import { createRequire } from 'module';
 import Fastify from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
-import { AppError } from './utils/errors.js';
-import { errorResponse } from './utils/response.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json');
@@ -84,47 +82,61 @@ export async function buildApp(opts = {}) {
 
   // Global error handler
   fastify.setErrorHandler((error, request, reply) => {
-    fastify.log.error(error);
-
-    // Handle Fastify validation errors
+    // Fastify built-in schema validation error
     if (error.validation) {
-      return errorResponse(
-        reply,
-        'Validation failed',
-        400,
-        error.validation
-      );
+      return reply.status(400).send({
+        success: false,
+        message: 'Validation failed',
+        errors: error.validation,
+      });
     }
 
-    // Handle our custom AppErrors
-    if (error instanceof AppError) {
-      return errorResponse(reply, error.message, error.statusCode);
-    }
-
-    // Prisma known request errors
+    // Prisma unique constraint violation (P2002) — duplicate email
     if (error.code === 'P2002') {
-      return errorResponse(reply, 'A record with this value already exists', 409);
+      return reply.status(409).send({
+        success: false,
+        message: 'Resource already exists. Email may already be in use.',
+      });
     }
+
+    // Prisma record not found (P2025)
     if (error.code === 'P2025') {
-      return errorResponse(reply, 'Record not found', 404);
+      return reply.status(404).send({
+        success: false,
+        message: 'Resource not found',
+      });
     }
 
-    // Any other error with a client-safe status code
-    if (error.statusCode && error.statusCode < 500) {
-      return errorResponse(reply, error.message, error.statusCode);
+    // Custom AppError or any error with statusCode set manually
+    if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {
+      return reply.status(error.statusCode).send({
+        success: false,
+        message: error.message,
+      });
     }
 
-    // Unknown server error
-    return errorResponse(
-      reply,
-      process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message,
-      500
-    );
+    // Fastify's own HttpError (from @fastify/error or http-errors)
+    if (error.status && error.status >= 400 && error.status < 500) {
+      return reply.status(error.status).send({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    // Unknown / server error
+    fastify.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      message: 'Internal server error',
+    });
   });
 
   // 404 handler
   fastify.setNotFoundHandler((request, reply) => {
-    return errorResponse(reply, `Route ${request.method} ${request.url} not found`, 404);
+    return reply.status(404).send({
+      success: false,
+      message: `Route ${request.method} ${request.url} not found`,
+    });
   });
 
   return fastify;

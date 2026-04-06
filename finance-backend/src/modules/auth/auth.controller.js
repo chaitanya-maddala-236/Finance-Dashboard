@@ -1,14 +1,20 @@
-import * as authService from './auth.service.js';
+import { registerUser, loginUser } from './auth.service.js';
 import { successResponse } from '../../utils/response.js';
 
 export async function register(request, reply) {
-  const { name, email, password } = request.body;
-  const user = await authService.register(request.server.prisma, { name, email, password });
-  return successResponse(reply, user, 'User registered successfully', 201);
+  try {
+    const user = await registerUser(request.server.prisma, request.body);
+    return successResponse(reply, user, 'User registered successfully', 201);
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function login(request, reply) {
-  const { email, password } = request.body;
-  const result = await authService.login(request.server.prisma, { email, password });
-  return successResponse(reply, result, 'Login successful');
+  try {
+    const result = await loginUser(request.server.prisma, request.body);
+    return successResponse(reply, result, 'Login successful');
+  } catch (error) {
+    throw error;
+  }
 }
