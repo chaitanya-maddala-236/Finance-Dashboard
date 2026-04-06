@@ -45,7 +45,7 @@ finance-backend/
 
 ### Prerequisites
 
-- Node.js >= 18
+- Node.js >= 20
 - PostgreSQL database
 
 ### Installation
@@ -240,20 +240,20 @@ npm run prisma:generate
 - Build Command:
 
 ```bash
-npm ci && npx prisma generate
+npm ci --include=dev && npm run prisma:generate
 ```
 
 - Start Command:
 
 ```bash
-npx prisma migrate deploy && node src/server.js
+npm exec -- prisma migrate deploy && node src/server.js
 ```
 
 This ensures Prisma Client and migrations are always aligned with the production runtime.
 
 ### 4) Runtime version
 
-Use Node.js 20+ on Render. This project dependencies (Fastify v5 toolchain) are aligned with Node 20.
+Use Node.js 20+ on Render. Node.js 20+ is also the minimum supported version for this project overall. This project's dependencies (including the Fastify v5 toolchain) are aligned with Node 20.
 
 ### 5) Production safety checklist
 
