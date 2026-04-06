@@ -42,11 +42,11 @@ export async function getTrends(request, reply) {
 }
 
 export async function getMonthlyBreakdown(request, reply) {
-  const { year } = request.query;
+  const { year, startDate, endDate } = request.query;
   const data = await dashboardService.getMonthlyBreakdown(
     request.server.prisma,
     request.user,
-    { year }
+    { year, startDate, endDate }
   );
   return successResponse(reply, data, 'Monthly breakdown retrieved successfully');
 }

@@ -69,6 +69,7 @@ export async function getRecords(
   ]);
 
   return {
+    data: records,
     records,
     pagination: {
       total,

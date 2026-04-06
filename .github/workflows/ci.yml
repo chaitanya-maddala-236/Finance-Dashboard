@@ -10,11 +10,6 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    defaults:
-      run:
-        working-directory: finance-backend
 
     services:
       postgres:
@@ -38,48 +33,50 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
           cache: 'npm'
           cache-dependency-path: finance-backend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
+        working-directory: finance-backend
 
       - name: Create .env.test
         run: |
           cat > .env.test << EOF
           DATABASE_URL=postgresql://testuser:testpass@localhost:5432/finance_test
-          JWT_SECRET=test-secret-key-for-ci-at-least-32-chars
+          JWT_SECRET=test-secret-key-for-ci
           JWT_EXPIRES_IN=15m
+          REFRESH_TOKEN_EXPIRES_DAYS=30
           PORT=3001
           NODE_ENV=test
           BCRYPT_ROUNDS=4
           EOF
+        working-directory: finance-backend
 
       - name: Run Prisma migrations
         run: npx prisma migrate deploy
         env:
           DATABASE_URL: postgresql://testuser:testpass@localhost:5432/finance_test
+        working-directory: finance-backend
 
       - name: Run tests
         run: npm test
         env:
           DATABASE_URL: postgresql://testuser:testpass@localhost:5432/finance_test
+        working-directory: finance-backend
 
   lint:
     name: Lint Check
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    defaults:
-      run:
-        working-directory: finance-backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
           cache: 'npm'
           cache-dependency-path: finance-backend/package-lock.json
       - run: npm ci
+        working-directory: finance-backend
       - run: npm run lint --if-present
+        working-directory: finance-backend

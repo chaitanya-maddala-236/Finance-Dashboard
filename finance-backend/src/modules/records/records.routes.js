@@ -36,13 +36,13 @@ const successWithRecord = {
 };
 
 export default async function recordsRoutes(fastify) {
-  // GET /records — list records (all authenticated users)
+  // GET /records — list records (ANALYST or ADMIN)
   fastify.get(
     '/',
     {
       schema: {
         tags: ['Records'],
-        summary: 'List financial records',
+        summary: 'List financial records (Analyst/Admin only)',
         security: [{ bearerAuth: [] }],
         querystring: {
           type: 'object',
@@ -51,8 +51,11 @@ export default async function recordsRoutes(fastify) {
             limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
             type: { type: 'string', enum: ['INCOME', 'EXPENSE'] },
             category: { type: 'string' },
+            search: { type: 'string' },
             startDate: { type: 'string', format: 'date' },
             endDate: { type: 'string', format: 'date' },
+            sortBy: { type: 'string', enum: ['date', 'amount', 'category', 'type', 'createdAt', 'updatedAt'], default: 'date' },
+            sortOrder: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
             includeDeleted: { type: 'string', enum: ['true', 'false'], default: 'false' },
           },
         },
@@ -81,18 +84,18 @@ export default async function recordsRoutes(fastify) {
           },
         },
       },
-      preHandler: [authenticate],
+      preHandler: [authenticate, authorizeMinRole('ANALYST')],
     },
     recordsController.listRecords
   );
 
-  // GET /records/:id — get record by id
+  // GET /records/:id — get record by id (ANALYST or ADMIN)
   fastify.get(
     '/:id',
     {
       schema: {
         tags: ['Records'],
-        summary: 'Get a record by ID',
+        summary: 'Get a record by ID (Analyst/Admin only)',
         security: [{ bearerAuth: [] }],
         params: {
           type: 'object',
@@ -101,7 +104,7 @@ export default async function recordsRoutes(fastify) {
         },
         response: { 200: successWithRecord },
       },
-      preHandler: [authenticate],
+      preHandler: [authenticate, authorizeMinRole('ANALYST')],
     },
     recordsController.getRecordById
   );

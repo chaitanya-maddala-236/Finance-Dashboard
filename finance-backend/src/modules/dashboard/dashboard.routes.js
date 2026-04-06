@@ -128,6 +128,8 @@ export default async function dashboardRoutes(fastify) {
           type: 'object',
           properties: {
             year: { type: 'integer', minimum: 2000, maximum: 2100 },
+            startDate: { type: 'string', format: 'date' },
+            endDate: { type: 'string', format: 'date' },
           },
         },
         response: {

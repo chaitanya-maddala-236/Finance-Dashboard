@@ -197,15 +197,20 @@ export async function getDashboardTrends(prisma, requestingUser, { year, period,
 /**
  * Get monthly breakdown of income vs expense.
  */
-export async function getMonthlyBreakdown(prisma, requestingUser, { year }) {
+export async function getMonthlyBreakdown(prisma, requestingUser, { year, startDate, endDate } = {}) {
   const targetYear = parseInt(year || new Date().getFullYear(), 10);
 
-  const startOfYear = new Date(`${targetYear}-01-01T00:00:00.000Z`);
-  const endOfYear = new Date(`${targetYear}-12-31T23:59:59.999Z`);
+  const dateRange = {};
+  if (startDate) dateRange.gte = new Date(startDate);
+  if (endDate) dateRange.lte = new Date(endDate);
+  if (!startDate && !endDate) {
+    dateRange.gte = new Date(`${targetYear}-01-01T00:00:00.000Z`);
+    dateRange.lte = new Date(`${targetYear}-12-31T23:59:59.999Z`);
+  }
 
   const where = {
     isDeleted: false,
-    date: { gte: startOfYear, lte: endOfYear },
+    date: dateRange,
   };
 
   if (requestingUser.role === 'VIEWER') {
