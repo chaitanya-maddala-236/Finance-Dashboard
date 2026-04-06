@@ -86,7 +86,9 @@ export async function updateUser(prisma, id, updates, requestingUser) {
   if (updates.status !== undefined) data.status = updates.status;
 
   if (updates.password) {
-    const rounds = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
+    // BCRYPT_ROUNDS should be 12+ in production
+    // Set to 4 in .env.test for faster test runs
+    const rounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 12;
     data.password = await bcrypt.hash(updates.password, rounds);
   }
 
@@ -102,6 +104,7 @@ export async function updateUser(prisma, id, updates, requestingUser) {
 /**
  * Deactivate a user (soft delete via status = INACTIVE).
  * Admin cannot deactivate themselves.
+ * Revoking all active refresh tokens immediately invalidates their sessions.
  */
 export async function deactivateUser(prisma, id, requestingUserId) {
   const user = await prisma.user.findUnique({ where: { id } });
@@ -117,6 +120,12 @@ export async function deactivateUser(prisma, id, requestingUserId) {
     where: { id },
     data: { status: 'INACTIVE' },
     select: USER_SELECT,
+  });
+
+  // Revoke all active refresh tokens to immediately invalidate sessions
+  await prisma.refreshToken.updateMany({
+    where: { userId: id, isRevoked: false },
+    data: { isRevoked: true },
   });
 
   return updated;

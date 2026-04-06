@@ -49,10 +49,11 @@ export async function loginUser(app, supertest, email, password) {
 }
 
 /**
- * Remove all records and users from the test database.
- * Records must be deleted before users due to the foreign key constraint.
+ * Remove all records, refresh tokens, and users from the test database.
+ * Order matters due to foreign key constraints.
  */
 export async function cleanDb(prisma) {
   await prisma.record.deleteMany();
+  await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
 }

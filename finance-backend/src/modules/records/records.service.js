@@ -26,6 +26,11 @@ export async function listRecords(prisma, { page = 1, limit = 10, type, category
     where.isDeleted = false;
   }
 
+  // ANALYST sees only their own records; ADMIN sees all
+  if (requestingUser.role === 'ANALYST') {
+    where.createdById = requestingUser.sub;
+  }
+
   // VIEWER can only see their own records
   if (requestingUser.role === 'VIEWER') {
     where.createdById = requestingUser.sub;
@@ -75,6 +80,11 @@ export async function getRecordById(prisma, id, requestingUser) {
 
   if (!record) {
     throw new NotFoundError(`Record with id '${id}' not found`);
+  }
+
+  // ANALYST can only view their own records
+  if (requestingUser.role === 'ANALYST' && record.createdById !== requestingUser.sub) {
+    throw new ForbiddenError('You do not have access to this record');
   }
 
   // VIEWER can only view their own records

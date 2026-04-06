@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: finance-backend
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: finance_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: finance-backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create .env.test
+        run: |
+          cat > .env.test << EOF
+          DATABASE_URL=postgresql://testuser:testpass@localhost:5432/finance_test
+          JWT_SECRET=test-secret-key-for-ci-at-least-32-chars
+          JWT_EXPIRES_IN=15m
+          PORT=3001
+          NODE_ENV=test
+          BCRYPT_ROUNDS=4
+          EOF
+
+      - name: Run Prisma migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/finance_test
+
+      - name: Run tests
+        run: npm test
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/finance_test
+
+  lint:
+    name: Lint Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: finance-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: finance-backend/package-lock.json
+      - run: npm ci
+      - run: npm run lint --if-present
