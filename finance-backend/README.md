@@ -45,7 +45,7 @@ finance-backend/
 
 ### Prerequisites
 
-- Node.js >= 18
+- Node.js >= 20
 - PostgreSQL database
 
 ### Installation
@@ -200,6 +200,67 @@ git push origin main
 ```bash
 docker-compose up --build -d
 ```
+
+## Render + Prisma (OpenSSL 3) Production Notes
+
+If Render logs show:
+
+`Error loading shared library libssl.so.1.1: No such file or directory (needed by libquery_engine-linux-musl.so.node)`
+
+it means Prisma Client was generated with an engine target expecting OpenSSL 1.1.  
+Render runtime images now use OpenSSL 3, so Prisma must include the OpenSSL 3 musl engine target.
+
+### 1) Prisma schema configuration
+
+Use this in `prisma/schema.prisma`:
+
+```prisma
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+```
+
+### 2) Regenerate Prisma client
+
+From `finance-backend/`:
+
+```bash
+npx prisma generate
+```
+
+Or with npm script:
+
+```bash
+npm run prisma:generate
+```
+
+### 3) Render build/start commands (recommended)
+
+- Build Command:
+
+```bash
+npm ci --include=dev && npm run prisma:generate
+```
+
+- Start Command:
+
+```bash
+npm exec -- prisma migrate deploy && node src/server.js
+```
+
+This ensures Prisma Client and migrations are always aligned with the production runtime.
+
+### 4) Runtime version
+
+Use Node.js 20+ on Render. Node.js 20+ is also the minimum supported version for this project overall. This project's dependencies (including the Fastify v5 toolchain) are aligned with Node 20.
+
+### 5) Production safety checklist
+
+- Keep Prisma and `@prisma/client` versions in sync (same major/minor).
+- Regenerate Prisma Client after every Prisma schema change.
+- Use `prisma migrate deploy` in production (never `prisma migrate dev`).
+- Prefer explicit `binaryTargets` for deployment environments to prevent engine mismatch issues.
 
 ## What Was Improved (v2)
 - Docker + docker-compose for one-command setup
