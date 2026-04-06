@@ -109,12 +109,17 @@ export async function buildApp(opts = {}) {
       return errorResponse(reply, 'Record not found', 404);
     }
 
-    // Fallback
-    const statusCode = error.statusCode || 500;
-    const message =
-      process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message;
+    // Any other error with a client-safe status code
+    if (error.statusCode && error.statusCode < 500) {
+      return errorResponse(reply, error.message, error.statusCode);
+    }
 
-    return errorResponse(reply, message, statusCode);
+    // Unknown server error
+    return errorResponse(
+      reply,
+      process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message,
+      500
+    );
   });
 
   // 404 handler

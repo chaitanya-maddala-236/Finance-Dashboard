@@ -1,4 +1,4 @@
-import { ForbiddenError } from '../utils/errors.js';
+import { errorResponse } from '../utils/response.js';
 
 const ROLE_HIERARCHY = {
   VIEWER: 1,
@@ -16,17 +16,11 @@ const ROLE_HIERARCHY = {
  * @param {...string} roles - Allowed roles
  */
 export function authorize(...roles) {
-  return async function (request) {
+  return async function (request, reply) {
     const userRole = request.user?.role;
 
-    if (!userRole) {
-      throw new ForbiddenError('Access denied: no role found');
-    }
-
-    if (!roles.includes(userRole)) {
-      throw new ForbiddenError(
-        `Access denied: requires one of [${roles.join(', ')}]`
-      );
+    if (!userRole || !roles.includes(userRole)) {
+      return errorResponse(reply, 'Insufficient permissions', 403);
     }
   };
 }
@@ -38,15 +32,13 @@ export function authorize(...roles) {
  * @param {string} minRole
  */
 export function authorizeMinRole(minRole) {
-  return async function (request) {
+  return async function (request, reply) {
     const userRole = request.user?.role;
     const userLevel = ROLE_HIERARCHY[userRole] ?? 0;
     const minLevel = ROLE_HIERARCHY[minRole] ?? 0;
 
     if (userLevel < minLevel) {
-      throw new ForbiddenError(
-        `Access denied: requires at least ${minRole} role`
-      );
+      return errorResponse(reply, 'Insufficient permissions', 403);
     }
   };
 }
