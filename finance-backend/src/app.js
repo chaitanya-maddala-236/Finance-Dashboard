@@ -74,12 +74,6 @@ export async function buildApp(opts = {}) {
     return reply.send({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // Register route modules
-  await fastify.register(authRoutes, { prefix: '/auth' });
-  await fastify.register(usersRoutes, { prefix: '/users' });
-  await fastify.register(recordsRoutes, { prefix: '/records' });
-  await fastify.register(dashboardRoutes, { prefix: '/dashboard' });
-
   // Global error handler
   fastify.setErrorHandler((error, request, reply) => {
     // Fastify built-in schema validation error
@@ -138,6 +132,12 @@ export async function buildApp(opts = {}) {
       message: `Route ${request.method} ${request.url} not found`,
     });
   });
+
+  // Register route modules
+  await fastify.register(authRoutes, { prefix: '/auth' });
+  await fastify.register(usersRoutes, { prefix: '/users' });
+  await fastify.register(recordsRoutes, { prefix: '/records' });
+  await fastify.register(dashboardRoutes, { prefix: '/dashboard' });
 
   return fastify;
 }
