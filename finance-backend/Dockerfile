@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:18
 
 WORKDIR /app
 
@@ -6,6 +6,8 @@ COPY package*.json ./
 RUN npm ci --only=production
 
 COPY prisma ./prisma
+
+# ✅ Generate Prisma client (works perfectly in Debian)
 RUN npx prisma generate
 
 COPY src ./src
