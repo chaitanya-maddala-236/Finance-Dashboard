@@ -1,21 +1,24 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
 
 /**
- * Register a new user.
+ * Register a new user. Role is always VIEWER for self-registration.
  */
 export async function registerUser(prisma, { name, email, password }) {
+
   const existing = await prisma.user.findUnique({ where: { email } });
+
   if (existing) {
     const error = new Error('Email already in use');
     error.statusCode = 409;
     throw error;
   }
 
-  // BCRYPT_ROUNDS should be 12+ in production
-  // Set to 4 in .env.test for faster test runs
-  const rounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 12;
+  // BCRYPT_ROUNDS should be 12+ in production, 4 in test for speed
+  const parsedRounds = Number.parseInt(process.env.BCRYPT_ROUNDS, 10);
+  const rounds = Number.isInteger(parsedRounds) && parsedRounds >= 4 && parsedRounds <= 31
+    ? parsedRounds
+    : 12;
   const hashedPassword = await bcrypt.hash(password, rounds);
 
   const user = await prisma.user.create({
@@ -39,35 +42,10 @@ export async function registerUser(prisma, { name, email, password }) {
 }
 
 /**
- * Generate an access token and a long-lived refresh token, storing the
- * refresh token in the database.
- */
-export async function generateTokens(prisma, user) {
-  const accessToken = jwt.sign(
-    { sub: user.id, userId: user.id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
-  );
-
-  const refreshToken = crypto.randomBytes(64).toString('hex');
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
-
-  await prisma.refreshToken.create({
-    data: {
-      token: refreshToken,
-      userId: user.id,
-      expiresAt,
-    },
-  });
-
-  return { accessToken, refreshToken };
-}
-
-/**
- * Login a user and return access + refresh tokens.
+ * Login a user and return a JWT token.
  */
 export async function loginUser(prisma, { email, password }) {
+
   const user = await prisma.user.findUnique({ where: { email } });
 
   if (!user) {
@@ -89,60 +67,38 @@ export async function loginUser(prisma, { email, password }) {
     throw error;
   }
 
+  const token = jwt.sign(
+    { sub: user.id, userId: user.id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
+  );
+
   const { password: _, ...userWithoutPassword } = user;
-  const tokens = await generateTokens(prisma, user);
-
-  return {
-    // Keep 'token' for backward compatibility with existing clients
-    token: tokens.accessToken,
-    ...tokens,
-    user: userWithoutPassword,
-  };
+  return { token, user: userWithoutPassword };
 }
 
 /**
- * Rotate a refresh token: revoke the old one and issue new access + refresh tokens.
+ * Get current authenticated user.
  */
-export async function refreshAccessToken(prisma, refreshToken) {
-  const stored = await prisma.refreshToken.findUnique({
-    where: { token: refreshToken },
-    include: { user: true },
+export async function getMe(prisma, userId) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      status: true,
+      createdAt: true,
+    },
   });
 
-  if (!stored || stored.isRevoked) {
-    const error = new Error('Invalid refresh token');
-    error.statusCode = 401;
+  if (!user) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
     throw error;
   }
 
-  if (new Date() > stored.expiresAt) {
-    const error = new Error('Refresh token expired');
-    error.statusCode = 401;
-    throw error;
-  }
-
-  if (stored.user.status === 'INACTIVE') {
-    const error = new Error('Account is deactivated');
-    error.statusCode = 401;
-    throw error;
-  }
-
-  // Rotate: revoke old token, issue new tokens
-  await prisma.refreshToken.update({
-    where: { id: stored.id },
-    data: { isRevoked: true },
-  });
-
-  return generateTokens(prisma, stored.user);
-}
-
-/**
- * Revoke a refresh token (logout).
- */
-export async function logoutUser(prisma, refreshToken) {
-  await prisma.refreshToken.updateMany({
-    where: { token: refreshToken },
-    data: { isRevoked: true },
-  });
+  return user;
 }
 
