@@ -1,6 +1,27 @@
 import { register, login, me } from './auth.controller.js';
 import { authenticate } from '../../middleware/authenticate.js';
 
+const userSchema = {
+  type: 'object',
+  properties: {
+    id:        { type: 'string' },
+    name:      { type: 'string' },
+    email:     { type: 'string' },
+    role:      { type: 'string' },
+    status:    { type: 'string' },
+    createdAt: { type: 'string' },
+  },
+};
+
+const successWithUser = {
+  type: 'object',
+  properties: {
+    success: { type: 'boolean' },
+    message: { type: 'string' },
+    data: userSchema,
+  },
+};
+
 export default async function authRoutes(fastify, _options) {
 
   // POST /auth/register
@@ -15,12 +36,11 @@ export default async function authRoutes(fastify, _options) {
           name:     { type: 'string', minLength: 1 },
           email:    { type: 'string', format: 'email' },
           password: { type: 'string', minLength: 8 },
-          role: {
-            type: 'string',
-            enum: ['VIEWER', 'ANALYST', 'ADMIN']
-          }
         }
-      }
+      },
+      response: {
+        201: successWithUser,
+      },
     }
   }, register);
 
@@ -36,7 +56,23 @@ export default async function authRoutes(fastify, _options) {
           email:    { type: 'string', format: 'email' },
           password: { type: 'string', minLength: 1 }
         }
-      }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            data: {
+              type: 'object',
+              properties: {
+                token: { type: 'string' },
+                user:  userSchema,
+              },
+            },
+          },
+        },
+      },
     },
     config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
   }, login);
@@ -46,7 +82,10 @@ export default async function authRoutes(fastify, _options) {
     schema: {
       tags: ['Auth'],
       summary: 'Get current authenticated user',
-      security: [{ bearerAuth: [] }]
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: successWithUser,
+      },
     },
     preHandler: [authenticate]
   }, me);

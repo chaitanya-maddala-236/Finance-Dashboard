@@ -2,9 +2,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 /**
- * Register a new user.
+ * Register a new user. Role is always VIEWER for self-registration.
  */
-export async function registerUser(prisma, { name, email, password, role }) {
+export async function registerUser(prisma, { name, email, password }) {
 
   const existing = await prisma.user.findUnique({ where: { email } });
 
@@ -15,7 +15,10 @@ export async function registerUser(prisma, { name, email, password, role }) {
   }
 
   // BCRYPT_ROUNDS should be 12+ in production, 4 in test for speed
-  const rounds = parseInt(process.env.BCRYPT_ROUNDS || '12', 10);
+  const parsedRounds = Number.parseInt(process.env.BCRYPT_ROUNDS, 10);
+  const rounds = Number.isInteger(parsedRounds) && parsedRounds >= 4 && parsedRounds <= 31
+    ? parsedRounds
+    : 12;
   const hashedPassword = await bcrypt.hash(password, rounds);
 
   const user = await prisma.user.create({
@@ -23,7 +26,7 @@ export async function registerUser(prisma, { name, email, password, role }) {
       name,
       email,
       password: hashedPassword,
-      role: role || 'VIEWER',
+      role: 'VIEWER',
     },
     select: {
       id: true,
@@ -67,7 +70,7 @@ export async function loginUser(prisma, { email, password }) {
   const token = jwt.sign(
     { sub: user.id, userId: user.id, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
   );
 
   const { password: _, ...userWithoutPassword } = user;

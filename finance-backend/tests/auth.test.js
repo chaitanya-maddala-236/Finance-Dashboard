@@ -60,6 +60,15 @@ describe('Auth Module', () => {
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
     });
+
+    it('ignores any role provided during self-registration (always VIEWER)', async () => {
+      const res = await supertest(app.server)
+        .post('/auth/register')
+        .send({ name: 'Sneaky User', email: 'sneaky@test.com', password: testPassword, role: 'ADMIN' });
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.role).toBe('VIEWER');
+    });
   });
 
   describe('POST /auth/login', () => {
@@ -100,4 +109,47 @@ describe('Auth Module', () => {
       expect(res.body.success).toBe(false);
     });
   });
+
+  describe('GET /auth/me', () => {
+    let token;
+
+    beforeAll(async () => {
+      const res = await supertest(app.server)
+        .post('/auth/login')
+        .send({ email: testEmail, password: testPassword });
+      token = res.body.data.token;
+    });
+
+    it('returns current user data with a valid token', async () => {
+      const res = await supertest(app.server)
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('User retrieved successfully');
+
+      const user = res.body.data;
+      expect(user.email).toBe(testEmail);
+      expect(user.name).toBe(testName);
+      expect(user.role).toBe('VIEWER');
+      expect(user.password).toBeUndefined();
+    });
+
+    it('returns 401 when no token is provided', async () => {
+      const res = await supertest(app.server)
+        .get('/auth/me');
+
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 401 when an invalid token is provided', async () => {
+      const res = await supertest(app.server)
+        .get('/auth/me')
+        .set('Authorization', 'Bearer invalid.token.here');
+
+      expect(res.status).toBe(401);
+    });
+  });
 });
+
