@@ -72,7 +72,7 @@ describe('Auth Module', () => {
   });
 
   describe('POST /auth/login', () => {
-    it('logs in with valid credentials and returns a JWT token', async () => {
+    it('logs in with valid credentials and returns access + refresh tokens', async () => {
       const res = await supertest(app.server)
         .post('/auth/login')
         .send({ email: testEmail, password: testPassword });
@@ -81,9 +81,11 @@ describe('Auth Module', () => {
       expect(res.body.success).toBe(true);
       expect(res.body.message).toBe('Login successful');
 
-      const { token, user } = res.body.data;
-      expect(typeof token).toBe('string');
-      expect(token.length).toBeGreaterThan(0);
+      const { accessToken, refreshToken, user } = res.body.data;
+      expect(typeof accessToken).toBe('string');
+      expect(accessToken.length).toBeGreaterThan(0);
+      expect(typeof refreshToken).toBe('string');
+      expect(refreshToken.length).toBeGreaterThan(0);
       expect(user.email).toBe(testEmail);
       expect(user.role).toBe('VIEWER');
 
@@ -117,7 +119,7 @@ describe('Auth Module', () => {
       const res = await supertest(app.server)
         .post('/auth/login')
         .send({ email: testEmail, password: testPassword });
-      token = res.body.data.token;
+      token = res.body.data.accessToken;
     });
 
     it('returns current user data with a valid token', async () => {
@@ -152,4 +154,3 @@ describe('Auth Module', () => {
     });
   });
 });
-

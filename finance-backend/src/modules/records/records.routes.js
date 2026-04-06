@@ -106,13 +106,13 @@ export default async function recordsRoutes(fastify) {
     recordsController.getRecordById
   );
 
-  // POST /records — create record (ANALYST or ADMIN)
+  // POST /records — create record (ADMIN only)
   fastify.post(
     '/',
     {
       schema: {
         tags: ['Records'],
-        summary: 'Create a financial record (Analyst/Admin only)',
+        summary: 'Create a financial record (Admin only)',
         security: [{ bearerAuth: [] }],
         body: {
           type: 'object',
@@ -128,18 +128,18 @@ export default async function recordsRoutes(fastify) {
         },
         response: { 201: successWithRecord },
       },
-      preHandler: [authenticate, authorizeMinRole('ANALYST')],
+      preHandler: [authenticate, authorizeMinRole('ADMIN')],
     },
     recordsController.createRecord
   );
 
-  // PATCH /records/:id — update record (ANALYST or ADMIN)
+  // PATCH /records/:id — update record (ADMIN only)
   fastify.patch(
     '/:id',
     {
       schema: {
         tags: ['Records'],
-        summary: 'Update a financial record (Analyst/Admin only)',
+        summary: 'Update a financial record (Admin only)',
         security: [{ bearerAuth: [] }],
         params: {
           type: 'object',
@@ -159,18 +159,18 @@ export default async function recordsRoutes(fastify) {
         },
         response: { 200: successWithRecord },
       },
-      preHandler: [authenticate, authorizeMinRole('ANALYST')],
+      preHandler: [authenticate, authorizeMinRole('ADMIN')],
     },
     recordsController.updateRecord
   );
 
-  // DELETE /records/:id — soft delete (ANALYST or ADMIN)
+  // DELETE /records/:id — soft delete (ADMIN only)
   fastify.delete(
     '/:id',
     {
       schema: {
         tags: ['Records'],
-        summary: 'Soft-delete a financial record (Analyst/Admin only)',
+        summary: 'Soft-delete a financial record (Admin only)',
         security: [{ bearerAuth: [] }],
         params: {
           type: 'object',
@@ -179,7 +179,7 @@ export default async function recordsRoutes(fastify) {
         },
         response: { 200: successWithRecord },
       },
-      preHandler: [authenticate, authorizeMinRole('ANALYST')],
+      preHandler: [authenticate, authorizeMinRole('ADMIN')],
     },
     recordsController.deleteRecord
   );

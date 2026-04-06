@@ -92,13 +92,35 @@ export async function updateUser(prisma, id, updates, requestingUser) {
     data.password = await bcrypt.hash(updates.password, rounds);
   }
 
-  const updated = await prisma.user.update({
+  if (updates.status !== undefined) {
+    const updatedStatusUser = await updateUserStatus(
+      prisma,
+      id,
+      updates.status,
+      { id: requestingUser.sub || requestingUser.id }
+    );
+
+    if (updates.name !== undefined || updates.role !== undefined || updates.password !== undefined) {
+      const followUpData = {};
+      if (updates.name !== undefined) followUpData.name = updates.name;
+      if (updates.role !== undefined) followUpData.role = updates.role;
+      if (updates.password) followUpData.password = data.password;
+
+      return prisma.user.update({
+        where: { id },
+        data: followUpData,
+        select: USER_SELECT,
+      });
+    }
+
+    return updatedStatusUser;
+  }
+
+  return prisma.user.update({
     where: { id },
     data,
     select: USER_SELECT,
   });
-
-  return updated;
 }
 
 /**
@@ -107,28 +129,7 @@ export async function updateUser(prisma, id, updates, requestingUser) {
  * Revoking all active refresh tokens immediately invalidates their sessions.
  */
 export async function deactivateUser(prisma, id, requestingUserId) {
-  const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) {
-    throw new NotFoundError(`User with id '${id}' not found`);
-  }
-
-  if (id === requestingUserId) {
-    throw new ForbiddenError('You cannot deactivate your own account');
-  }
-
-  const updated = await prisma.user.update({
-    where: { id },
-    data: { status: 'INACTIVE' },
-    select: USER_SELECT,
-  });
-
-  // Revoke all active refresh tokens to immediately invalidate sessions
-  await prisma.refreshToken.updateMany({
-    where: { userId: id, isRevoked: false },
-    data: { isRevoked: true },
-  });
-
-  return updated;
+  return updateUserStatus(prisma, id, 'INACTIVE', { id: requestingUserId });
 }
 
 /**
@@ -136,4 +137,40 @@ export async function deactivateUser(prisma, id, requestingUserId) {
  */
 export async function getMe(prisma, id) {
   return getUserById(prisma, id);
+}
+
+export async function updateUserStatus(prisma, id, status, requestingUser) {
+  if (id === requestingUser.id) {
+    const error = new Error('Cannot change your own status');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const updated = await prisma.user.update({
+    where: { id },
+    data: { status },
+    select: {
+      id: true, name: true, email: true,
+      role: true, status: true, updatedAt: true,
+      createdAt: true,
+    },
+  });
+
+  // If deactivating: soft-delete their active JWT sessions
+  // by revoking all refresh tokens
+  if (status === 'INACTIVE') {
+    await prisma.refreshToken.updateMany({
+      where: { userId: id, isRevoked: false },
+      data: { isRevoked: true },
+    });
+  }
+
+  return updated;
 }

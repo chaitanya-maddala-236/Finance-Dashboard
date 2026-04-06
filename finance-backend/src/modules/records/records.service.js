@@ -19,41 +19,51 @@ const RECORD_SELECT = {
 /**
  * List records with optional filters (excludes soft-deleted by default).
  */
-export async function listRecords(prisma, { page = 1, limit = 10, type, category, startDate, endDate, includeDeleted = false }, requestingUser) {
-  const where = {};
+export async function getRecords(
+  prisma,
+  filters,
+  user
+) {
+  const {
+    type, category, startDate, endDate,
+    search, page = 1, limit = 10,
+    sortBy = 'date', sortOrder = 'desc',
+    includeDeleted = false,
+  } = filters;
 
-  if (!includeDeleted) {
-    where.isDeleted = false;
-  }
+  const where = includeDeleted ? {} : { isDeleted: false };
 
-  // ANALYST sees only their own records; ADMIN sees all
-  if (requestingUser.role === 'ANALYST') {
-    where.createdById = requestingUser.sub;
-  }
-
-  // VIEWER can only see their own records
-  if (requestingUser.role === 'VIEWER') {
-    where.createdById = requestingUser.sub;
+  // DATA ISOLATION — ANALYST sees only their own records
+  // ADMIN sees all records
+  if (user.role === 'ANALYST') {
+    where.createdById = user.id || user.sub || user.userId;
   }
 
   if (type) where.type = type;
   if (category) where.category = { contains: category, mode: 'insensitive' };
-
+  if (search) where.notes = { contains: search, mode: 'insensitive' };
   if (startDate || endDate) {
     where.date = {};
     if (startDate) where.date.gte = new Date(startDate);
     if (endDate) where.date.lte = new Date(endDate);
   }
 
-  const skip = (page - 1) * limit;
+  const parsedPage = parseInt(page, 10);
+  const parsedLimit = parseInt(limit, 10);
+  const skip = (parsedPage - 1) * parsedLimit;
+  const take = Math.min(parsedLimit, 100);
+  const safeSortBy = ['date', 'amount', 'category', 'type', 'createdAt', 'updatedAt'].includes(sortBy)
+    ? sortBy
+    : 'date';
+  const safeSortOrder = sortOrder === 'asc' ? 'asc' : 'desc';
 
   const [records, total] = await Promise.all([
     prisma.record.findMany({
       where,
       select: RECORD_SELECT,
+      orderBy: { [safeSortBy]: safeSortOrder },
       skip,
-      take: limit,
-      orderBy: { date: 'desc' },
+      take,
     }),
     prisma.record.count({ where }),
   ]);
@@ -62,33 +72,45 @@ export async function listRecords(prisma, { page = 1, limit = 10, type, category
     records,
     pagination: {
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: parsedPage,
+      limit: take,
+      totalPages: Math.ceil(total / take),
     },
   };
+}
+
+export async function listRecords(prisma, filters, requestingUser) {
+  return getRecords(prisma, filters, requestingUser);
 }
 
 /**
  * Get a single record by ID.
  */
 export async function getRecordById(prisma, id, requestingUser) {
+  return getSingleRecord(prisma, id, requestingUser);
+}
+
+export async function getSingleRecord(prisma, id, user) {
+  const where = { id, isDeleted: false };
+
+  // ANALYST can only view their own record
+  if (user.role === 'ANALYST') {
+    where.createdById = user.id || user.sub || user.userId;
+  }
+
   const record = await prisma.record.findFirst({
-    where: { id, isDeleted: false },
+    where,
     select: RECORD_SELECT,
   });
 
   if (!record) {
-    throw new NotFoundError(`Record with id '${id}' not found`);
-  }
-
-  // ANALYST can only view their own records
-  if (requestingUser.role === 'ANALYST' && record.createdById !== requestingUser.sub) {
-    throw new ForbiddenError('You do not have access to this record');
+    const error = new Error('Record not found');
+    error.statusCode = 404;
+    throw error;
   }
 
   // VIEWER can only view their own records
-  if (requestingUser.role === 'VIEWER' && record.createdById !== requestingUser.sub) {
+  if (user.role === 'VIEWER' && record.createdById !== (user.id || user.sub || user.userId)) {
     throw new ForbiddenError('You do not have access to this record');
   }
 

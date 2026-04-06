@@ -38,7 +38,7 @@ export async function loginUser(app, supertest, email, password) {
     .post('/auth/login')
     .send({ email, password });
 
-  const token = res.body?.data?.token;
+  const token = res.body?.data?.accessToken || res.body?.data?.token;
   if (res.status !== 200 || res.body?.success === false || !token) {
     throw new Error(
       `Login failed for ${email}: status=${res.status}, body=${JSON.stringify(res.body)}`

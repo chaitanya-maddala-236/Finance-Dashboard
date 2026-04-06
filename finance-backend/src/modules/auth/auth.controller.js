@@ -1,4 +1,4 @@
-import { registerUser, loginUser, getMe } from './auth.service.js';
+import { registerUser, loginUser, getMe, refreshAccessToken, logoutUser } from './auth.service.js';
 import { successResponse } from '../../utils/response.js';
 
 export async function register(request, reply) {
@@ -16,3 +16,14 @@ export async function me(request, reply) {
   return successResponse(reply, user, 'User retrieved successfully');
 }
 
+export async function refresh(request, reply) {
+  const { refreshToken } = request.body;
+  const tokens = await refreshAccessToken(request.server.prisma, refreshToken);
+  return successResponse(reply, tokens, 'Token refreshed successfully');
+}
+
+export async function logout(request, reply) {
+  const { refreshToken } = request.body;
+  await logoutUser(request.server.prisma, refreshToken);
+  return successResponse(reply, { success: true, message: 'Logged out' }, 'Logged out');
+}

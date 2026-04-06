@@ -141,3 +141,25 @@ export async function buildApp(opts = {}) {
 
   return fastify;
 }
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const PORT = parseInt(process.env.PORT || '3000', 10);
+  const HOST = process.env.HOST || '0.0.0.0';
+
+  const start = async () => {
+    const fastify = await buildApp();
+    try {
+      await fastify.listen({ port: PORT, host: HOST });
+      console.log(`🚀 Finance Dashboard API running at http://${HOST}:${PORT}`);
+      console.log(`📖 Swagger docs available at http://${HOST}:${PORT}/docs`);
+    } catch (err) {
+      fastify.log.error(err);
+      process.exit(1);
+    }
+  };
+
+  process.on('SIGTERM', async () => process.exit(0));
+  process.on('SIGINT', async () => process.exit(0));
+
+  start();
+}
