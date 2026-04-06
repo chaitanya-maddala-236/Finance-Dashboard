@@ -1,3 +1,5 @@
+import { errorResponse } from '../utils/response.js';
+
 const ROLE_HIERARCHY = {
   VIEWER: 1,
   ANALYST: 2,
@@ -18,10 +20,7 @@ export function authorize(...roles) {
     const userRole = request.user?.role;
 
     if (!userRole || !roles.includes(userRole)) {
-      return reply.status(403).send({
-        success: false,
-        message: 'Insufficient permissions',
-      });
+      return errorResponse(reply, 'Insufficient permissions', 403);
     }
   };
 }
@@ -39,10 +38,7 @@ export function authorizeMinRole(minRole) {
     const minLevel = ROLE_HIERARCHY[minRole] ?? 0;
 
     if (userLevel < minLevel) {
-      return reply.status(403).send({
-        success: false,
-        message: 'Insufficient permissions',
-      });
+      return errorResponse(reply, 'Insufficient permissions', 403);
     }
   };
 }
