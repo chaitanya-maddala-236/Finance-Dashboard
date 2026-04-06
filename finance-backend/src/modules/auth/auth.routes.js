@@ -1,4 +1,5 @@
 import * as authController from './auth.controller.js';
+import { authenticate } from '../../middleware/authenticate.js';
 
 const registerSchema = {
   schema: {
@@ -62,6 +63,8 @@ const loginSchema = {
             type: 'object',
             properties: {
               token: { type: 'string' },
+              accessToken: { type: 'string' },
+              refreshToken: { type: 'string' },
               user: {
                 type: 'object',
                 properties: {
@@ -80,6 +83,65 @@ const loginSchema = {
   },
 };
 
+const refreshSchema = {
+  schema: {
+    tags: ['Auth'],
+    summary: 'Refresh access token using a refresh token',
+    body: {
+      type: 'object',
+      required: ['refreshToken'],
+      additionalProperties: false,
+      properties: {
+        refreshToken: { type: 'string' },
+      },
+    },
+    response: {
+      200: {
+        description: 'Token refreshed',
+        type: 'object',
+        properties: {
+          success: { type: 'boolean' },
+          message: { type: 'string' },
+          data: {
+            type: 'object',
+            properties: {
+              accessToken: { type: 'string' },
+              refreshToken: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
+const logoutSchema = {
+  schema: {
+    tags: ['Auth'],
+    summary: 'Logout and revoke refresh token',
+    security: [{ bearerAuth: [] }],
+    body: {
+      type: 'object',
+      required: ['refreshToken'],
+      additionalProperties: false,
+      properties: {
+        refreshToken: { type: 'string' },
+      },
+    },
+    response: {
+      200: {
+        description: 'Logged out',
+        type: 'object',
+        properties: {
+          success: { type: 'boolean' },
+          message: { type: 'string' },
+          data: {},
+        },
+      },
+    },
+  },
+};
+
 export default async function authRoutes(fastify) {
   fastify.post('/register', {
     ...registerSchema,
@@ -90,4 +152,14 @@ export default async function authRoutes(fastify) {
     ...loginSchema,
     config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
   }, authController.login);
+
+  fastify.post('/refresh', {
+    ...refreshSchema,
+    config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
+  }, authController.refresh);
+
+  fastify.post('/logout', {
+    ...logoutSchema,
+    preHandler: [authenticate],
+  }, authController.logout);
 }

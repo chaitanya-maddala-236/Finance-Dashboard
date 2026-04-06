@@ -7,3 +7,10 @@ coverage/
 *.log
 prisma/migrations/dev.db
 .nyc_output
+
+# Prisma migrations MUST be committed - do not add to gitignore
+# prisma/migrations/  ← never ignore this
+
+# Helper scripts
+push-to-github.sh
+*.sh

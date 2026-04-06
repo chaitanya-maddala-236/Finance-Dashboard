@@ -1,5 +1,7 @@
 # Finance Dashboard Backend API
 
+[![CI](https://github.com/chaitanya-maddala-236/Finance-Dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/chaitanya-maddala-236/Finance-Dashboard/actions/workflows/ci.yml)
+
 > A production-ready REST API for managing personal and organizational financial records with role-based access control, JWT authentication, soft-delete auditing, and interactive Swagger documentation. Built with **Fastify v5**, **Prisma ORM**, and **PostgreSQL**.
 
 ---
@@ -8,6 +10,7 @@
 
 - [Features](#features)
 - [Tech Stack](#tech-stack)
+- [Docker Setup](#docker-setup)
 - [Getting Started](#getting-started)
 - [Environment Variables](#environment-variables)
 - [Database Setup](#database-setup)
@@ -27,6 +30,7 @@
 ## Features
 
 - ✅ **JWT Authentication** — stateless, role-embedded tokens
+- ✅ **Refresh Token Rotation** — 30-day tokens with automatic revocation on deactivation
 - ✅ **Role-based Access Control** — VIEWER / ANALYST / ADMIN
 - ✅ **Financial Records CRUD** — with soft delete for audit history
 - ✅ **Dashboard Analytics** — summary totals and monthly income vs expense breakdowns
@@ -54,6 +58,35 @@
 | @fastify/swagger  | OpenAPI Spec Generation     | —         |
 | @scalar/fastify-api-reference | Swagger UI      | —         |
 | Jest + Supertest  | Integration Testing         | —         |
+
+---
+
+## Docker Setup
+
+### Run with Docker (Recommended)
+
+```bash
+# Copy env file
+cp finance-backend/.env.example finance-backend/.env
+
+# Edit .env with your JWT_SECRET
+
+# Start everything (Postgres + API + seed)
+cd finance-backend
+docker-compose up --build
+
+# API available at http://localhost:3000
+# Docs available at http://localhost:3000/docs
+```
+
+### Stop
+
+```bash
+docker-compose down
+
+# Remove volumes (wipes database)
+docker-compose down -v
+```
 
 ---
 
@@ -145,11 +178,15 @@ NODE_ENV=test
 
 ## Database Setup
 
-The Prisma schema defines two models: `User`, `Record`.
+The Prisma schema defines three models: `User`, `Record`, `RefreshToken`.
+
+Migrations are committed to the repository.
+Never run `prisma migrate dev` in production.
+Use `prisma migrate deploy` instead.
 
 ```bash
 # Apply migrations to your database
-npx prisma migrate dev
+npx prisma migrate deploy
 
 # View your data in Prisma Studio
 npx prisma studio
@@ -187,10 +224,12 @@ open http://localhost:3000/docs
 
 ### Authentication
 
-| Method | Endpoint          | Auth     | Description                     |
-|--------|-------------------|----------|---------------------------------|
-| POST   | `/auth/register`  | None     | Register a new user             |
-| POST   | `/auth/login`     | None     | Login and receive a JWT token   |
+| Method | Endpoint            | Auth     | Description                          |
+|--------|---------------------|----------|--------------------------------------|
+| POST   | `/auth/register`    | None     | Register a new user                  |
+| POST   | `/auth/login`       | None     | Login and receive JWT + refresh token|
+| POST   | `/auth/refresh`     | None     | Rotate refresh token, get new tokens |
+| POST   | `/auth/logout`      | ✅       | Revoke refresh token (logout)        |
 
 ### Users
 
@@ -263,21 +302,21 @@ Fastify's default error shape (`{ statusCode, error, message }`) never reaches t
 
 ## Role & Permission Matrix
 
-| Action                     | VIEWER | ANALYST | ADMIN |
-|----------------------------|--------|---------|-------|
-| Register / Login           | ✅     | ✅      | ✅    |
-| View own profile (`/me`)   | ✅     | ✅      | ✅    |
-| View Dashboard Summary     | ✅     | ✅      | ✅    |
-| View Monthly Breakdown     | ✅     | ✅      | ✅    |
-| List Records               | ✅     | ✅      | ✅    |
-| View Single Record         | ✅     | ✅      | ✅    |
-| Create Record              | ❌     | ✅      | ✅    |
-| Update Record              | ❌     | ✅      | ✅    |
-| Soft-Delete Record         | ❌     | ✅      | ✅    |
-| List All Users             | ❌     | ❌      | ✅    |
-| Get Any User               | ❌     | ❌      | ✅    |
-| Update Any User            | ❌     | ❌      | ✅    |
-| Deactivate User            | ❌     | ❌      | ✅    |
+| Action                     | VIEWER | ANALYST          | ADMIN    |
+|----------------------------|--------|------------------|----------|
+| Register / Login           | ✅     | ✅               | ✅       |
+| View own profile (`/me`)   | ✅     | ✅               | ✅       |
+| View Dashboard Summary     | ✅     | ✅               | ✅       |
+| View Monthly Breakdown     | ✅     | ✅               | ✅       |
+| List Records               | ❌     | ✅ (own only)    | ✅ all   |
+| View Single Record         | ❌     | ✅ (own only)    | ✅ all   |
+| Create Record              | ❌     | ✅               | ✅       |
+| Update Record              | ❌     | ✅ (own only)    | ✅       |
+| Soft-Delete Record         | ❌     | ✅ (own only)    | ✅       |
+| List All Users             | ❌     | ❌               | ✅       |
+| Get Any User               | ❌     | ❌               | ✅       |
+| Update Any User            | ❌     | ❌               | ✅       |
+| Deactivate User            | ❌     | ❌               | ✅       |
 
 ---
 
@@ -543,10 +582,18 @@ The global `setErrorHandler` in `app.js` intercepts every error and normalizes i
 
 | Decision | Trade-off |
 |----------|-----------|
-| No refresh tokens | Simpler auth flow; tokens expire after `JWT_EXPIRES_IN` |
+| Refresh token rotation | Slightly more complex auth flow; enables immediate session revocation |
 | No multi-role support | One role per user keeps RBAC simple and focused |
 | No permanent delete | Requires manual DB cleanup for truly stale test data |
 | Global rate limit | Per-route tuning would be more precise but increases config complexity |
+
+### Prisma Migrations Version-Controlled
+
+Prisma migrations are version-controlled alongside the codebase. This ensures schema changes are reproducible across all environments and prevents schema drift between development and production.
+
+### bcrypt Rounds at 12
+
+bcrypt rounds are set to 12 in production (up from the common default of 10) for stronger password hashing. Test environments use 4 rounds to keep the test suite fast.
 
 ---
 
@@ -558,6 +605,42 @@ The global `setErrorHandler` in `app.js` intercepts every error and normalizes i
 4. The monthly breakdown uses the calendar year as the default grouping period.
 5. Admin users cannot deactivate their own account to prevent self-lockout.
 6. Passwords are never returned in any response — the service layer strips them before returning user objects.
+7. ANALYSTs can only view records they created. ADMINs have full visibility across all records.
+8. When a user is deactivated, their financial records are preserved for audit purposes but their active sessions are immediately revoked. Records created by inactive users remain visible to ADMINs in dashboard summaries.
+
+---
+
+## Deployment
+
+### Manual Git Push
+
+```bash
+git add .
+git commit -m "your message"
+git push origin main
+```
+
+### With Docker
+
+```bash
+cd finance-backend
+docker-compose up --build -d
+```
+
+---
+
+## What Was Improved (v2)
+
+- Docker + docker-compose for one-command setup
+- Prisma migrations committed for schema safety
+- ANALYST data isolation (own records only)
+- Refresh token rotation (30-day tokens, auto-revoke on deactivate)
+- Dashboard date filtering on all endpoints
+- Cascade session revocation on user deactivation
+- GitHub Actions CI pipeline
+- bcrypt rounds increased to 12 for production security
+
+---
 
 ---
 

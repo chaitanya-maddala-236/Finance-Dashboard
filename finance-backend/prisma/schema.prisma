@@ -27,15 +27,26 @@ enum RecordType {
 }
 
 model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  password      String
+  role          Role           @default(VIEWER)
+  status        Status         @default(ACTIVE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  records       Record[]
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
   id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(VIEWER)
-  status    Status   @default(ACTIVE)
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  records   Record[]
+  isRevoked Boolean  @default(false)
 }
 
 model Record {
