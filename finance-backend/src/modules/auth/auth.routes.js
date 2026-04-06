@@ -80,6 +80,13 @@ const loginSchema = {
 };
 
 export default async function authRoutes(fastify) {
-  fastify.post('/register', registerSchema, authController.register);
-  fastify.post('/login', loginSchema, authController.login);
+  fastify.post('/register', {
+    ...registerSchema,
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, authController.register);
+
+  fastify.post('/login', {
+    ...loginSchema,
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, authController.login);
 }
