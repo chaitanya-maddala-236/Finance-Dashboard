@@ -7,11 +7,11 @@ const registerSchema = {
     body: {
       type: 'object',
       required: ['name', 'email', 'password'],
+      additionalProperties: false,
       properties: {
         name: { type: 'string', minLength: 1 },
         email: { type: 'string', format: 'email' },
         password: { type: 'string', minLength: 8 },
-        role: { type: 'string', enum: ['VIEWER', 'ANALYST', 'ADMIN'] },
       },
     },
     response: {
@@ -45,6 +45,7 @@ const loginSchema = {
     body: {
       type: 'object',
       required: ['email', 'password'],
+      additionalProperties: false,
       properties: {
         email: { type: 'string', format: 'email' },
         password: { type: 'string', minLength: 1 },

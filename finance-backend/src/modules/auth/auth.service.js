@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 /**
  * Register a new user.
  */
-export async function registerUser(prisma, { name, email, password, role }) {
+export async function registerUser(prisma, { name, email, password }) {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     const error = new Error('Email already in use');
@@ -20,7 +20,7 @@ export async function registerUser(prisma, { name, email, password, role }) {
       name,
       email,
       password: hashedPassword,
-      role: role || 'VIEWER',
+      role: 'VIEWER',
     },
     select: {
       id: true,
@@ -61,7 +61,7 @@ export async function loginUser(prisma, { email, password }) {
   }
 
   const token = jwt.sign(
-    { userId: user.id, role: user.role },
+    { sub: user.id, userId: user.id, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );

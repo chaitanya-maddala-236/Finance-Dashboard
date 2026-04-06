@@ -145,7 +145,7 @@ NODE_ENV=test
 
 ## Database Setup
 
-The Prisma schema defines three models: `User`, `FinancialRecord`.
+The Prisma schema defines two models: `User`, `Record`.
 
 ```bash
 # Apply migrations to your database
